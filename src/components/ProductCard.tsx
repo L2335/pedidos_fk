@@ -15,35 +15,7 @@ interface ProductCardProps {
   onBonusQuantityUpdate?: (productId: string, bonusQuantity: number) => void
 }
 
-const CATEGORY_COLORS: { [key: string]: string } = {
-  'DR Super Forte': 'bg-blue-100 text-blue-800',
-  'DR c/Alças': 'bg-gray-100 text-gray-800',
-  'DR Assa mais leve': 'bg-[#969D75] text-white',
-  'DR Freezer': 'bg-[#00B683] text-white',
-  'DR Pia e Banheiro': 'bg-[#BD63F2] text-white',
-  'DR Utilix': 'bg-green-100 text-green-800',
-  'DR Reforçado': 'bg-[#004BA3] text-white',
-  'DR Reciclado': 'bg-yellow-100 text-yellow-800',
-  'DR Economia': 'bg-green-100 text-green-800',
-  'DR Resist': 'bg-green-100 text-green-800',
-  'DR Coleta Seletiva': 'bg-[#79F263] text-white',
-  'DR Odor Defense': 'bg-[#F263CA] text-white',
-  'Luvas Danny': 'bg-[#F5E90C] text-white',
-  default: 'bg-gray-100 text-gray-800',
-}
-
-function getCategoryColor(category?: string) {
-  return CATEGORY_COLORS[category ?? 'default'] || CATEGORY_COLORS.default
-}
-
-const ProductCardComponent = memo(({ 
-  product, 
-  quantity, 
-  bonusQuantity = 0, 
-  onPriceUpdate, 
-  onQuantityUpdate,
-  onBonusQuantityUpdate 
-}: ProductCardProps) => {
+const ProductCardComponent = memo(({ product, quantity, bonusQuantity = 0, onPriceUpdate, onQuantityUpdate, onBonusQuantityUpdate }: ProductCardProps) => {
   const [isEditingPrice, setIsEditingPrice] = useState(false)
   const [editPrice, setEditPrice] = useState((product.currentPrice ?? product.price ?? 0).toString())
 
@@ -135,11 +107,7 @@ const ProductCardComponent = memo(({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-medium text-card-foreground truncate">{product.name}</h3>
-              {product.product_category && (
-                <Badge variant="secondary" className={getCategoryColor(product.product_category)}>
-                  {product.product_category}
-                </Badge>
-              )}
+              <Badge variant="default">Tapete Higienico</Badge>
             </div>
             <div className="flex gap-2 mb-2">
               {product.capacity && <Badge variant="outline">{product.capacity}</Badge>}
@@ -149,16 +117,8 @@ const ProductCardComponent = memo(({
               <div className="flex items-center gap-2">
                 <span className="font-medium">Código:</span>
                 <span>{product.internal_code}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>{product.capacity}</span>
                 <span>•</span>
-                <span>Cor: {product.appearance}</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <span>{product.pack_quantity} un/fardo</span>
-                <span>•</span>
-                <span>{product.dimensions}</span>
               </div>
             </div>
 
@@ -226,18 +186,13 @@ const ProductCardComponent = memo(({
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">Bonificação:</span>
                   {!showBonusSection && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowBonusSection(true)}
-                      className="h-7 px-2"
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setShowBonusSection(true)} className="h-7 px-2">
                       <Gift className="h-3 w-3 mr-1" />
                       Adicionar
                     </Button>
                   )}
                 </div>
-                
+
                 {showBonusSection && (
                   <div className="w-full p-2 bg-accent/5 rounded border">
                     <div className="flex items-center justify-between mb-2">
@@ -259,27 +214,15 @@ const ProductCardComponent = memo(({
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
-                    
+
                     <div className="flex items-center justify-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleBonusQuantityChange(bonusQuantity - 1)}
-                        disabled={bonusQuantity <= 0}
-                        className="h-8 w-8 p-0"
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleBonusQuantityChange(bonusQuantity - 1)} disabled={bonusQuantity <= 0} className="h-8 w-8 p-0">
                         <Minus className="h-4 w-4" />
                       </Button>
-                      
+
                       {isEditingBonus ? (
                         <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            value={editBonusQuantity}
-                            onChange={(e) => setEditBonusQuantity(e.target.value)}
-                            className="w-16 h-8 text-center text-sm"
-                            min="0"
-                          />
+                          <Input type="number" value={editBonusQuantity} onChange={(e) => setEditBonusQuantity(e.target.value)} className="w-16 h-8 text-center text-sm" min="0" />
                           <Button size="sm" variant="ghost" onClick={handleSaveBonusQuantity}>
                             <Check className="h-3 w-3 text-success" />
                           </Button>
@@ -288,20 +231,15 @@ const ProductCardComponent = memo(({
                           </Button>
                         </div>
                       ) : (
-                        <span 
+                        <span
                           className="min-w-[32px] text-center text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground rounded px-2 py-1"
                           onClick={() => setIsEditingBonus(true)}
                         >
                           {bonusQuantity}
                         </span>
                       )}
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleBonusQuantityChange(bonusQuantity + 1)}
-                        className="h-8 w-8 p-0"
-                      >
+
+                      <Button size="sm" variant="outline" onClick={() => handleBonusQuantityChange(bonusQuantity + 1)} className="h-8 w-8 p-0">
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
