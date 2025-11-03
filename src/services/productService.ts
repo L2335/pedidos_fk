@@ -36,18 +36,6 @@ export interface CatalogData {
   products: Product[]
 }
 
-export const getCustomerCatalogById = async (customerId: string): Promise<CatalogData> => {
-  const endpoint = `/catalog/${customerId}`
-
-  try {
-    const response = await apiClient.get<CatalogData>(endpoint)
-
-    return response.data
-  } catch (error) {
-    throw error
-  }
-}
-
 export const getProducts = async (): Promise<Product[]> => {
   const endpoint = `/products`
 
