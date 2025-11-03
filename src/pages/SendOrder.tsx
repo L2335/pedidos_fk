@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Check, Package2, User, Gift } from 'lucide-react'
+import { Check, Package2, User, Gift, Loader2 } from 'lucide-react'
 import { type Product } from '@/services/productService'
 import { formatCNPJ, formatCEP } from '@/services/formatters'
 import { sendOrderService } from '@/services/orderService.ts'
@@ -44,7 +44,6 @@ const SendOrder = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Customer | null>(null)
-  const [orderNumber, setOrderNumber] = useState('')
   const [paymentTerm, setPaymentTerm] = useState('')
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -109,7 +108,7 @@ const SendOrder = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!paymentTerm) {
+    if (!paymentTerm.trim()) {
       setError('O prazo de pagamento é obrigatório.')
       return
     }
@@ -119,27 +118,32 @@ const SendOrder = () => {
       return
     }
 
+    if (cartItems.length === 0) {
+      setError('O carrinho está vazio.')
+      return
+    }
+
     setError(null)
     setIsLoading(true)
     try {
       const payload = {
         customer: selectedClient,
         total: getTotalPrice(),
-        paymentTerm,
-        orderNumber,
-        notes,
+        paymentTerm: paymentTerm,
+        notes: notes,
         items: cartItems,
       }
 
       await sendOrderService(payload)
 
       const clientKey = selectedClient.id
-
       localStorage.removeItem(`CartOrders-${clientKey}`)
+      localStorage.removeItem('currentCustomerKey')
 
       setShowConfirmation(true)
     } catch (err: any) {
-      setError('Ocorreu um erro ao enviar o pedido. Tente novamente.')
+      const errorMessage = err?.response?.data?.message || err?.message || 'Ocorreu um erro ao enviar o pedido. Tente novamente.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -147,7 +151,7 @@ const SendOrder = () => {
 
   const handleNewOrderRedirect = () => {
     setShowConfirmation(false)
-    navigate('/realizar-pedido', { replace: true })
+    navigate('/realizar-pedido')
   }
 
   if (showConfirmation) {
@@ -172,47 +176,47 @@ const SendOrder = () => {
                 {selectedClient && (
                   <>
                     <div className="flex items-center justify-between text-sm">
-                      <span>Razão Social:</span>
+                      <span className="text-muted-foreground">Razão Social:</span>
                       <span className="font-medium">{selectedClient.corporate_name}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span>Nome Fantasia:</span>
+                      <span className="text-muted-foreground">Nome Fantasia:</span>
                       <span className="font-medium">{selectedClient.trade_name}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span>CNPJ:</span>
+                      <span className="text-muted-foreground">CNPJ:</span>
                       <span className="font-medium">{formatCNPJ(selectedClient.cnpj)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span>Endereço:</span>
+                      <span className="text-muted-foreground">Endereço:</span>
                       <span className="font-medium text-right">
                         {selectedClient.street}, {selectedClient.number} - {selectedClient.neighborhood}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span>CEP:</span>
+                      <span className="text-muted-foreground">CEP:</span>
                       <span className="font-medium">{formatCEP(selectedClient.postal_code)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span>Cidade/UF:</span>
+                      <span className="text-muted-foreground">Cidade/UF:</span>
                       <span className="font-medium">
                         {selectedClient.city}/{selectedClient.state}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span>Prazo de Pagamento:</span>
+                      <span className="text-muted-foreground">Prazo de Pagamento:</span>
                       <span className="font-medium">{paymentTerm}</span>
-                    </div>
+                      
                     <div className="border-t pt-3" />
                   </>
                 )}
                 <div className="flex items-center justify-between text-sm">
-                  <span>Total de itens:</span>
+                  <span className="text-muted-foreground">Total de itens:</span>
                   <span className="font-medium">{getTotalItems()}</span>
                 </div>
                 {getTotalBonusItems() > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-muted-foreground">
                       <Gift className="h-4 w-4 text-green-600" />
                       Bonificação:
                     </span>
@@ -247,6 +251,12 @@ const SendOrder = () => {
           <p className="text-sm text-muted-foreground">Complete as informações para confirmar seu pedido</p>
         </div>
 
+        {error && (
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -256,15 +266,15 @@ const SendOrder = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {cartItems.map((item) => (
-                <div key={item.id} className="border-b pb-3 last:border-0">
-                  <div className="flex items-center justify-between text-sm mb-1">
+              {cartItems.map((item, index) => (
+                <div key={item.id} className={index < cartItems.length - 1 ? 'pb-3 border-b' : 'pb-3'}>
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <p className="font-medium">{item.name}</p>
                       <p className="text-muted-foreground">
                         {item.quantity}x R$ {(item.currentPrice || item.price).toFixed(2)}
                       </p>
-                      {item.bonusQuantity && item.bonusQuantity > 0 && (
+                      {(item.bonusQuantity ?? 0) > 0 && (
                         <div className="flex items-center gap-1 mt-1">
                           <Gift className="h-3 w-3 text-green-600" />
                           <span className="text-xs text-green-600">+{item.bonusQuantity} bonificação</span>
@@ -276,14 +286,14 @@ const SendOrder = () => {
                 </div>
               ))}
 
-              <div className="border-t pt-3 space-y-2">
+              <div className="pt-3 space-y-2 border-t">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Total de itens:</span>
+                  <span className="text-muted-foreground">Total de itens:</span>
                   <span className="font-medium">{getTotalItems()}</span>
                 </div>
                 {getTotalBonusItems() > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-muted-foreground">
                       <Gift className="h-4 w-4 text-green-600" />
                       Bonificação:
                     </span>
@@ -312,29 +322,29 @@ const SendOrder = () => {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Razão Social:</span>
+                  <span className="text-muted-foreground">Razão Social:</span>
                   <span className="font-medium">{selectedClient.corporate_name}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span>Nome Fantasia:</span>
+                  <span className="text-muted-foreground">Nome Fantasia:</span>
                   <span className="font-medium">{selectedClient.trade_name}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span>CNPJ:</span>
+                  <span className="text-muted-foreground">CNPJ:</span>
                   <span className="font-medium">{formatCNPJ(selectedClient.cnpj)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span>Endereço:</span>
+                  <span className="text-muted-foreground">Endereço:</span>
                   <span className="font-medium text-right">
                     {selectedClient.street}, {selectedClient.number} - {selectedClient.neighborhood}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span>CEP:</span>
+                  <span className="text-muted-foreground">CEP:</span>
                   <span className="font-medium">{formatCEP(selectedClient.postal_code)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span>Cidade/UF:</span>
+                  <span className="text-muted-foreground">Cidade/UF:</span>
                   <span className="font-medium">
                     {selectedClient.city}/{selectedClient.state}
                   </span>
@@ -354,22 +364,30 @@ const SendOrder = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="orderNumber">Número do Pedido</Label>
-                <Input id="orderNumber" type="text" value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} placeholder="Ex: 123456/L" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deadline">Prazo de Pagamento *</Label>
-                <Input id="deadline" type="text" value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} placeholder="Ex: 30 dias" required />
+                <Label htmlFor="deadline">
+                  Prazo de Pagamento <span className="text-destructive">*</span>
+                </Label>
+                <Input id="deadline" type="text" value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} placeholder="Ex: 30 dias" required disabled={isLoading} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="notes">Observações</Label>
-                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Informações adicionais sobre o pedido..." rows={3} />
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Informações adicionais sobre o pedido..."
+                  rows={3}
+                  disabled={isLoading}
+                />
               </div>
 
               <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
                 {isLoading ? (
-                  'Enviando...'
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Enviando...
+                  </>
                 ) : (
                   <>
                     <Check className="h-5 w-5 mr-2" />
@@ -377,7 +395,6 @@ const SendOrder = () => {
                   </>
                 )}
               </Button>
-              {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
             </form>
           </CardContent>
         </Card>
