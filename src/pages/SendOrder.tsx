@@ -206,7 +206,7 @@ const SendOrder = () => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Prazo de Pagamento:</span>
                       <span className="font-medium">{paymentTerm}</span>
-                      
+                    </div>
                     <div className="border-t pt-3" />
                   </>
                 )}
