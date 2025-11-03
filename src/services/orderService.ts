@@ -12,10 +12,8 @@ export const sendOrderService = async (payload: any) => {
 export const getOrderService = async (queryParams: any) => {
   try {
     const response = await apiClient.get('/orders', { params: queryParams })
-    console.log('Resposta:', response.data)
     return response.data
   } catch (error) {
-    console.error('Erro ao buscar os pedidos:', error)
     throw error
   }
 }
