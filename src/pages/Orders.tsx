@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Package, Calendar, User, Eye, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Package, Calendar, User, Eye, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import OrderFilter, { type FilterState } from '@/components/OrderFilter'
@@ -15,6 +15,7 @@ type Product = {
   name: string
   quantity: number
   price: number
+  bonusQuantity?: number
 }
 
 type Order = {
@@ -31,6 +32,8 @@ type Order = {
   products: Product[]
 }
 
+const ITEMS_PER_PAGE = 10
+
 const Orders = () => {
   const navigate = useNavigate()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -43,6 +46,10 @@ const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const isCustomPeriod = filters.startDate || filters.endDate
+  const currentMonth = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -61,11 +68,12 @@ const Orders = () => {
 
   const groupOrders = useCallback((rawOrders: any[]): Order[] => {
     const orderMap: Record<string, Order> = {}
+    const orderList: Order[] = []
 
     rawOrders.forEach((row) => {
       const id = row.order_id ?? row.id
       if (!orderMap[id]) {
-        orderMap[id] = {
+        const newOrder = {
           id,
           created_at: row.created_at,
           status: row.status,
@@ -78,17 +86,21 @@ const Orders = () => {
           total: row.total !== undefined ? Number(row.total) : 0,
           products: [],
         }
+        orderMap[id] = newOrder
+        orderList.push(newOrder)
       }
+
       if (row.product_name) {
         orderMap[id].products.push({
           name: row.product_name,
           quantity: row.quantity !== undefined ? Number(row.quantity) : 0,
           price: row.product_price !== undefined ? Number(row.product_price) : 0,
+          bonusQuantity: row.bonus_product_quantity !== undefined ? Number(row.bonus_product_quantity) : 0,
         })
       }
     })
 
-    return Object.values(orderMap)
+    return orderList
   }, [])
 
   useEffect(() => {
@@ -109,6 +121,7 @@ const Orders = () => {
         if (!mounted) return
         const grouped = groupOrders(Array.isArray(data) ? data : [])
         setOrders(grouped)
+        setCurrentPage(1)
       } catch (err: any) {
         if (!mounted) return
         const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar pedidos'
@@ -126,6 +139,16 @@ const Orders = () => {
       mounted = false
     }
   }, [filters, groupOrders])
+
+  const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const currentOrders = orders.slice(startIndex, endIndex)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const LoadingSkeleton = () => (
     <div className="space-y-4">
@@ -183,7 +206,19 @@ const Orders = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2">Histórico de Pedidos</h2>
-          <p className="text-muted-foreground">{loading ? 'Carregando...' : `${orders.length} ${orders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}`}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-muted-foreground">
+              {loading ? 'Carregando...' : `${orders.length} ${orders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}`}
+              {!loading && orders.length > 0 && ` - Página ${currentPage} de ${totalPages}`}
+            </p>
+            {!isCustomPeriod && !loading && (
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+                <Calendar className="h-3 w-3 mr-1" />
+                {currentMonth}
+              </Badge>
+            )}
+          </div>
+          {!isCustomPeriod && !loading && <p className="text-sm text-muted-foreground mt-1">Exibindo pedidos do mês atual. Use os filtros de data para buscar outros períodos.</p>}
         </div>
 
         <OrderFilter onFilterChange={setFilters} />
@@ -198,48 +233,91 @@ const Orders = () => {
         {loading ? (
           <LoadingSkeleton />
         ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <Card key={order.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Pedido #{order.id}</CardTitle>
-                    <Badge className={getStatusColor(order.status ?? undefined)}>{order.status || 'Sem status'}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Cliente:</span>
-                      <span>{order.corporate_name || 'Não informado'}</span>
+          <>
+            <div className="space-y-4">
+              {currentOrders.map((order) => (
+                <Card key={order.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Pedido #{order.id}</CardTitle>
+                      <Badge className={getStatusColor(order.status ?? undefined)}>{order.status || 'Sem status'}</Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium">CNPJ:</span>
-                      <span>{order.cnpj ? formatCNPJ(order.cnpj) : 'Não informado'}</span>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Cliente:</span>
+                        <span>{order.corporate_name || 'Não informado'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-medium">CNPJ:</span>
+                        <span>{order.cnpj ? formatCNPJ(order.cnpj) : 'Não informado'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Data:</span>
+                        <span>{order.created_at ? new Date(order.created_at).toLocaleDateString('pt-BR') : 'Não informado'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Itens:</span>
+                        <span>{order.products.length ? `${order.products.length} ${order.products.length === 1 ? 'produto' : 'produtos'}` : 'Nenhum produto'}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span className="font-bold text-lg">{formatCurrency(Number(order.total ?? 0))}</span>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} aria-label={`Ver detalhes do pedido ${order.id}`}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver Detalhes
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Data:</span>
-                      <span>{order.created_at ? new Date(order.created_at).toLocaleDateString('pt-BR') : 'Não informado'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Itens:</span>
-                      <span>{order.products.length ? `${order.products.length} ${order.products.length === 1 ? 'produto' : 'produtos'}` : 'Nenhum produto'}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="font-bold text-lg">{formatCurrency(Number(order.total ?? 0))}</span>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} aria-label={`Ver detalhes do pedido ${order.id}`}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver Detalhes
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {orders.length > 0 && totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} aria-label="Página anterior">
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className="w-10"
+                          aria-label={`Ir para página ${page}`}
+                          aria-current={currentPage === page ? 'page' : undefined}
+                        >
+                          {page}
+                        </Button>
+                      )
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={page} className="px-1">
+                          ...
+                        </span>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+
+                <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Próxima página">
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {orders.length === 0 && !loading && !error && (
@@ -247,7 +325,11 @@ const Orders = () => {
             <CardContent className="text-center py-12">
               <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Nenhum pedido encontrado</h3>
-              <p className="text-muted-foreground">Tente ajustar os filtros ou realize seu primeiro pedido</p>
+              <p className="text-muted-foreground">
+                {!isCustomPeriod
+                  ? 'Nenhum pedido encontrado neste mês. Tente ajustar os filtros de data para buscar em outros períodos.'
+                  : 'Tente ajustar os filtros ou realize seu primeiro pedido'}
+              </p>
             </CardContent>
           </Card>
         )}
@@ -303,10 +385,25 @@ const Orders = () => {
                 {selectedOrder.products && selectedOrder.products.length > 0 ? (
                   <div className="space-y-2">
                     {selectedOrder.products.map((product: Product, index: number) => (
-                      <div key={index} className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
+                      <div
+                        key={index}
+                        className={`flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50 ${
+                          product.bonusQuantity && product.bonusQuantity > 0 ? 'bg-green-500/5 border border-green-500/20' : ''
+                        }`}
+                      >
                         <div className="flex-1">
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-muted-foreground">Quantidade: {product.quantity}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{product.name}</p>
+                            {product.bonusQuantity && product.bonusQuantity > 0 && (
+                              <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                                🎁 +{product.bonusQuantity} Bônus
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground">
+                            Quantidade: {product.quantity}
+                            {product.bonusQuantity && product.bonusQuantity > 0 && <span className="text-green-600 ml-1">+ {product.bonusQuantity} Bonificado</span>}
+                          </p>
                         </div>
                         <span className="font-medium">{formatCurrency(Number(product.price ?? 0))}</span>
                       </div>
@@ -316,6 +413,7 @@ const Orders = () => {
                   <p className="text-sm text-muted-foreground text-center py-4">Nenhum produto neste pedido</p>
                 )}
               </div>
+
               <div className="border-t mt-3 pt-3 flex justify-between items-center">
                 <span className="font-bold">Total:</span>
                 <span className="font-bold text-lg">{formatCurrency(Number(selectedOrder.total ?? 0))}</span>
