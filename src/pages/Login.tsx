@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Package, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import apiClient from '@/services/apiClient'
-import { useAuth } from '@/context/AuthContext' // importe o hook
+import { useAuth } from '@/context/AuthContext'
 
 const Login = () => {
   const [username, setUsername] = useState('')
@@ -53,7 +53,7 @@ const Login = () => {
           <div className="flex justify-center">
             <Package className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Pedidos Gulf</CardTitle>
+          <CardTitle className="text-2xl font-bold">Pedidos FK</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
