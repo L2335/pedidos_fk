@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useTransition } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import TopNavigation from '@/components/TopNavigation'
 import ProductCard from '@/components/ProductCard'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,6 @@ import { getProducts, type Product, type Customer } from '@/services/productServ
 import { formatCNPJ } from '@/services/formatters'
 
 const Catalog = () => {
-  const [isPending, startTransition] = useTransition()
   const [products, setProducts] = useState<Product[]>([])
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [bonusQuantities, setBonusQuantities] = useState<Record<string, number>>({})
@@ -130,7 +129,7 @@ const Catalog = () => {
             <p className="text-xs text-muted-foreground">CNPJ: {client?.Client.cnpj ? formatCNPJ(client.Client.cnpj).toString() : 'Não informado'}</p>
           </div>
 
-          <div className={`space-y-3 transition-opacity ${isPending ? 'opacity-50' : ''}`}>
+          <div className={`space-y-3 transition-opacity`}>
             {products.length > 0 ? (
               products.map((product) => (
                 <ProductCard
