@@ -394,7 +394,7 @@ const Orders = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{product.name}</p>
-                            {product.bonusQuantity && product.bonusQuantity > 0 && (
+                            {(product.bonusQuantity ?? 0) > 0 && (
                               <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
                                 🎁 +{product.bonusQuantity} Bônus
                               </Badge>
@@ -402,7 +402,7 @@ const Orders = () => {
                           </div>
                           <p className="text-muted-foreground">
                             Quantidade: {product.quantity}
-                            {product.bonusQuantity && product.bonusQuantity > 0 && <span className="text-green-600 ml-1">+ {product.bonusQuantity} Bonificado</span>}
+                            {(product.bonusQuantity ?? 0) > 0 && <span className="text-green-600 ml-1"> + {product.bonusQuantity} Bonificado</span>}
                           </p>
                         </div>
                         <span className="font-medium">{formatCurrency(Number(product.price ?? 0))}</span>
@@ -416,7 +416,7 @@ const Orders = () => {
 
               <div className="border-t mt-3 pt-3 flex justify-between items-center">
                 <span className="font-bold">Total:</span>
-                <span className="font-bold text-lg">{formatCurrency(Number(selectedOrder.total ?? 0))}</span>
+                <span className="font-bold text-lg">{formatCurrency(Number(selectedOrder.total ?? ''))}</span>
               </div>
             </div>
           )}
